@@ -22,23 +22,15 @@ import pandas as pd
 
 from config.paths import ANNOTATED_VIDEO_DIR, DATA_DIR
 from config.constants import (
-    ROLLING_WINDOW, BASELINE_BUFFER,
-    DIVER_SHELTER,
-    shelters_for_gopro,
+    ROLLING_WINDOW,
 )
 from config.transects import DIVER_TRANSECTS, SHARK_VIDEO_IDS, SHARK_TRANSECT_SECS
-from src.utils.mask_utils import get_masks, get_signed_reef_map
+from src.utils.mask_utils import get_signed_reef_map
 from src.utils.csv_utils import auto_read_csv, loc_cols
 from src.utils.fish_metrics import compute_all_metrics_from_df
 
 
 
-
-def _pre_disturbance_reference_mask(
-    frames: np.ndarray, dist_frame: float, baseline_buffer: int
-) -> np.ndarray:
-    """Return frames used to learn the refuge core before disturbance onset."""
-    return frames < (dist_frame - baseline_buffer)
 
 
 
@@ -62,13 +54,10 @@ def load_all_trials_from_timestamps(robot_type: str, fps: int = 30) -> list:
     from config.transects import TURTLE_TRANSECTS, AUV_TRANSECTS
 
     segs       = TURTLE_TRANSECTS if robot_type == "turtle" else AUV_TRANSECTS
-    shelters   = shelters_for_gopro("GP1")
-    ocean_mask, reef_map = get_masks("GP1")
     signed_reef_map = get_signed_reef_map("GP1")
 
     BUFFER_F   = 30 * fps
     rolling_w  = max(1, ROLLING_WINDOW * fps)
-    BASELINE_F = BASELINE_BUFFER * fps
     src_dir    = ANNOTATED_VIDEO_DIR / "GP1" if fps != 1 else DATA_DIR
 
     trials = []
@@ -117,26 +106,17 @@ def load_all_trials_from_timestamps(robot_type: str, fps: int = 30) -> list:
             dist_frame = float(starts[0] * fps)
             last_max   = int(auto_read_csv(src_dir / videos[-1] / "fish_detections.csv")["frame_num"].max())
             end_frame  = float(video_offset - (last_max + 1) + ends[-1] * fps)
-            reference_mask = _pre_disturbance_reference_mask(
-                frames, dist_frame, BASELINE_F
-            )
-
             arrays = compute_all_metrics_from_df(
                 raw,
-                shelters,
-                ocean_mask,
-                reef_map,
-                rolling_window=rolling_w,
-                reference_mask=reference_mask,
                 signed_reef_map=signed_reef_map,
+                rolling_window=rolling_w,
             )
             trials.append({
-                "trial_id":        trial_id,
-                "robot":           robot_type,
-                "dist_frame":      dist_frame,
-                "end_frame":       end_frame,
-                "baseline_buffer": BASELINE_F,
-                "frames":          frames,
+                "trial_id":   trial_id,
+                "robot":      robot_type,
+                "dist_frame": dist_frame,
+                "end_frame":  end_frame,
+                "frames":     frames,
                 "arrays":          arrays,
                 "n_frames":        len(frames),
             })
@@ -149,13 +129,11 @@ def load_diver_trials() -> list:
     Uses DIVER_TRANSECTS as the source of truth for start/end times, including
     the cross-chapter diver_2 trial. Shelter is fixed at DIVER_SHELTER.
     """
-    ocean_mask, reef_map = get_masks("GP1")
     signed_reef_map = get_signed_reef_map("GP1")
     src_dir = ANNOTATED_VIDEO_DIR / "diver"
     FPS = 30
     BUFFER_F = 40 * FPS
     rolling_w = max(1, ROLLING_WINDOW * FPS)
-    BASELINE_F = float(BASELINE_BUFFER * FPS)
 
     trials = []
     if not src_dir.exists():
@@ -199,28 +177,20 @@ def load_diver_trials() -> list:
             dist_frame = float(starts[0] * FPS)
             last_max = int(auto_read_csv(src_dir / videos[-1] / "fish_detections.csv")["frame_num"].max())
             end_frame = float(video_offset - (last_max + 1) + ends[-1] * FPS)
-            reference_mask = _pre_disturbance_reference_mask(
-                frames, dist_frame, BASELINE_F
-            )
             arrays = compute_all_metrics_from_df(
                 raw,
-                [DIVER_SHELTER],
-                ocean_mask,
-                reef_map,
-                rolling_window=rolling_w,
-                reference_mask=reference_mask,
                 signed_reef_map=signed_reef_map,
+                rolling_window=rolling_w,
             )
             trials.append({
-                "trial_id":        trial_id,
-                "robot":           "diver",
-                "dist_frame":      dist_frame,
-                "end_frame":       end_frame,
-                "baseline_buffer": BASELINE_F,
-                "fps":             FPS,
-                "frames":          frames,
-                "arrays":          arrays,
-                "n_frames":        len(frames),
+                "trial_id":   trial_id,
+                "robot":      "diver",
+                "dist_frame": dist_frame,
+                "end_frame":  end_frame,
+                "fps":        FPS,
+                "frames":     frames,
+                "arrays":     arrays,
+                "n_frames":   len(frames),
             })
     return trials
 
@@ -232,12 +202,9 @@ def load_shark_trials(fps: int = 30) -> list:
     ±40 s window around each transect.  dist_frame/end_frame are in 30 FPS
     frame numbers; fps=30 stored in each trial dict.
     """
-    ocean_mask, reef_map = get_masks("GP1")
     signed_reef_map = get_signed_reef_map("GP1")
-    shelters   = shelters_for_gopro("GP1") or []
     BUFFER_F   = 40 * fps          # 40 s buffer at fps
     rolling_w  = max(1, ROLLING_WINDOW * fps)
-    BASELINE_F = float(BASELINE_BUFFER * fps)
     src_dir    = ANNOTATED_VIDEO_DIR / "GP1"
 
     trials = []
@@ -263,27 +230,19 @@ def load_shark_trials(fps: int = 30) -> list:
             continue
 
         frames = raw["frame_num"].values
-        reference_mask = _pre_disturbance_reference_mask(
-            frames, dist_f, BASELINE_F
-        )
         arrays = compute_all_metrics_from_df(
             raw,
-            shelters,
-            ocean_mask,
-            reef_map,
-            rolling_window=rolling_w,
-            reference_mask=reference_mask,
             signed_reef_map=signed_reef_map,
+            rolling_window=rolling_w,
         )
         trials.append({
-            "trial_id":        key,
-            "robot":           "shark",
-            "dist_frame":      dist_f,
-            "end_frame":       end_f,
-            "baseline_buffer": BASELINE_F,
-            "fps":             fps,
-            "frames":          frames,
-            "arrays":          arrays,
-            "n_frames":        len(frames),
+            "trial_id":   key,
+            "robot":      "shark",
+            "dist_frame": dist_f,
+            "end_frame":  end_f,
+            "fps":        fps,
+            "frames":     frames,
+            "arrays":     arrays,
+            "n_frames":   len(frames),
         })
     return trials

@@ -15,13 +15,15 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import numpy as np
+from scipy import signal
+import soundfile as sf
 import matplotlib.pyplot as plt
 
 from config.paths import FIGURES_DIR, TRANSECT_SOUND_DIR, ensure_dirs_exist
-from src.sound.evaluate_sound import aggregate_group, plot_mean_std
 from src.visualization.plot_style import (
-    apply_phase2a_style,
-    PHASE2A_PANEL_FIGSIZE,
+    apply_paper_style,
+    PANEL_FIGSIZE,
     AUV_C, TURTLE_C, SHARK_C,
 )
 
@@ -31,9 +33,9 @@ CONTROL_C = SHARK_C  # purple — distinct from AUV (orange) and Turtle (teal)
 
 # (key in filename, colour, legend label)
 GROUPS = [
-    ("turtle",  TURTLE_C, "Turtle"),
-    ("auv",     AUV_C,    "AUV"),
-    ("control", CONTROL_C,"Control"),
+    ("turtle",  TURTLE_C,  "Turtle"),
+    ("auv",     AUV_C,     "AUV"),
+    ("control", CONTROL_C, "Control"),
 ]
 
 _PLOTS = [
@@ -43,6 +45,100 @@ _PLOTS = [
     ("mean_amplitude", "times",     "temporal",  "Time (normalised)", "Mean Amplitude (dB)", "Mean Temporal Energy (Averaged over Frequency)"),
 ]
 
+
+# ── Audio utilities ───────────────────────────────────────────────────────────
+
+def _load_audio(path):
+    y, sr = sf.read(path)
+    if y.ndim > 1:
+        y = np.mean(y, axis=1)
+    return y.astype(np.float64), sr
+
+
+def _stft_db(y, sr, nperseg=2048, noverlap=1536):
+    frequencies, times, Zxx = signal.stft(
+        y, fs=sr, window="hann", nperseg=nperseg, noverlap=noverlap,
+        boundary=None, padded=False,
+    )
+    magnitude = np.abs(Zxx)
+    ref = np.max(magnitude) if np.max(magnitude) > 0 else 1.0
+    magnitude_db = 20 * np.log10(np.maximum(magnitude, 1e-10) / ref)
+    return frequencies, times, Zxx, magnitude_db
+
+
+def _frame_rms(y, sr, frame_length=2048, hop_length=512):
+    if len(y) < frame_length:
+        y = np.pad(y, (0, frame_length - len(y)), mode="constant")
+    frames = np.lib.stride_tricks.sliding_window_view(y, frame_length)[::hop_length]
+    if len(frames) == 0:
+        frames = y[:frame_length][None, :]
+    rms = np.sqrt(np.mean(frames ** 2, axis=1))
+    times_rms = (np.arange(len(rms)) * hop_length + frame_length / 2) / sr
+    return rms, times_rms
+
+
+def _extract_features(file_path):
+    y, sr = _load_audio(file_path)
+    freqs, times, _, magnitude_db = _stft_db(y, sr)
+    rms, times_rms = _frame_rms(y, sr)
+    spl = 20 * np.log10(rms + 1e-10)
+    return {
+        "freqs":            freqs,
+        "times":            times,
+        "times_rms":        times_rms,
+        "mean_spectrum":    np.mean(magnitude_db, axis=1),
+        "mean_temporal":    np.mean(magnitude_db, axis=0),
+        "rms":              rms,
+        "spl":              spl,
+        "mean_rms_scalar":  np.mean(rms),
+        "mean_spl_scalar":  np.mean(spl),
+    }
+
+
+def _interp(x, y, x_common):
+    return np.interp(x_common, x, y)
+
+
+def aggregate_group(file_list):
+    features = [_extract_features(f) for f in file_list]
+    common_freqs    = features[0]["freqs"]
+    n_rms  = min(len(f["rms"])          for f in features)
+    n_spec = min(len(f["mean_temporal"]) for f in features)
+    t_rms  = np.linspace(0, 1, n_rms)
+    t_spec = np.linspace(0, 1, n_spec)
+
+    rms_all      = np.vstack([_interp(f["times_rms"] / f["times_rms"][-1], f["rms"],           t_rms)  for f in features])
+    spl_all      = np.vstack([_interp(f["times_rms"] / f["times_rms"][-1], f["spl"],           t_rms)  for f in features])
+    temporal_all = np.vstack([_interp(f["times"]     / f["times"][-1],     f["mean_temporal"], t_spec) for f in features])
+    spectrum_all = np.vstack([_interp(f["freqs"],                           f["mean_spectrum"], common_freqs) for f in features])
+
+    scalars_rms = np.array([f["mean_rms_scalar"] for f in features])
+    scalars_spl = np.array([f["mean_spl_scalar"] for f in features])
+    return {
+        "freqs":                  common_freqs,
+        "times_rms":              t_rms,
+        "times":                  t_spec,
+        "rms_mean":               np.mean(rms_all,      axis=0),
+        "rms_std":                np.std(rms_all,       axis=0),
+        "spl_mean":               np.mean(spl_all,      axis=0),
+        "spl_std":                np.std(spl_all,       axis=0),
+        "temporal_mean":          np.mean(temporal_all, axis=0),
+        "temporal_std":           np.std(temporal_all,  axis=0),
+        "spectrum_mean":          np.mean(spectrum_all, axis=0),
+        "spectrum_std":           np.std(spectrum_all,  axis=0),
+        "mean_rms_scalar_mean":   np.mean(scalars_rms),
+        "mean_rms_scalar_std":    np.std(scalars_rms),
+        "mean_spl_scalar_mean":   np.mean(scalars_spl),
+        "mean_spl_scalar_std":    np.std(scalars_spl),
+    }
+
+
+def plot_mean_std(ax, x, mean, std, label, color):
+    ax.plot(x, mean, label=label, color=color)
+    ax.fill_between(x, mean - std, mean + std, color=color, alpha=0.20)
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
     ensure_dirs_exist(OUT_DIR)
@@ -61,8 +157,10 @@ def main() -> None:
     for key, _, label in GROUPS:
         print(f"{label} files: {len(file_groups[key])}")
 
-    aggregated = {key: aggregate_group(files) for key, files in file_groups.items() if file_groups[key]}
-
+    aggregated = {
+        key: aggregate_group(files)
+        for key, files in file_groups.items() if file_groups[key]
+    }
     for key, _, label in GROUPS:
         if key not in aggregated:
             continue
@@ -70,7 +168,7 @@ def main() -> None:
         print(f"{label} Mean RMS: {g['mean_rms_scalar_mean']:.6f} ± {g['mean_rms_scalar_std']:.6f}")
         print(f"{label} Mean SPL: {g['mean_spl_scalar_mean']:.2f} ± {g['mean_spl_scalar_std']:.2f} dB")
 
-    for fname, x_key, y_key, xlabel, ylabel, title in _PLOTS:
+    for fname, x_key, y_key, xlabel, ylabel, _ in _PLOTS:
         fig, ax = plt.subplots()
         for key, color, label in GROUPS:
             if key not in aggregated:
@@ -79,10 +177,9 @@ def main() -> None:
             plot_mean_std(ax, g[x_key], g[f"{y_key}_mean"], g[f"{y_key}_std"], label, color)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        # ax.set_title(title)
         ax.legend(loc="upper center", ncol=3, frameon=False,
                   handlelength=1.2, columnspacing=0.8, borderaxespad=0.2)
-        apply_phase2a_style(fig, ax, figsize=PHASE2A_PANEL_FIGSIZE, clear_titles=False)
+        apply_paper_style(fig, ax, figsize=PANEL_FIGSIZE, clear_titles=False)
         fig.savefig(OUT_DIR / f"{fname}.svg", bbox_inches="tight")
         plt.close(fig)
         print(f"  Saved: {OUT_DIR / fname}.svg")

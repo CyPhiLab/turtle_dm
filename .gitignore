@@ -218,4 +218,4 @@ __marimo__/
 Turtle_Transects/
 *.DS_Store
 
-data/sound/transects/*
+data/sound/*

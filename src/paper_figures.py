@@ -27,8 +27,8 @@ from src.utils.trial_loader import (
     load_shark_trials,
 )
 from src.visualization.plot_style import (
-    apply_phase2a_style,
-    PHASE2A_PANEL_FIGSIZE,
+    apply_paper_style,
+    PANEL_FIGSIZE,
     AUV_C, TURTLE_C, DIVER_C, SHARK_C,
 )
 
@@ -104,8 +104,8 @@ def _mean_sem(mat: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 def plot_panel_figure(trials_by_robot: dict, out_dir: Path) -> None:
     """4-panel 2×2 figure: raw absolute-time mean±SEM for each metric in PANEL_METRICS."""
-    panel_w = PHASE2A_PANEL_FIGSIZE[0]
-    panel_h = PHASE2A_PANEL_FIGSIZE[1]
+    panel_w = PANEL_FIGSIZE[0]
+    panel_h = PANEL_FIGSIZE[1]
     fig, axes = plt.subplots(2, 2, figsize=(panel_w * 2, panel_h * 2))
     axes_flat = axes.flatten()
 
@@ -139,7 +139,7 @@ def plot_panel_figure(trials_by_robot: dict, out_dir: Path) -> None:
                 handlelength=1.2, columnspacing=0.8, borderaxespad=0.2,
             )
 
-    apply_phase2a_style(
+    apply_paper_style(
         fig, axes_flat,
         figsize=(panel_w * 2, panel_h * 2),
         clear_titles=True,
@@ -155,7 +155,7 @@ def plot_fid(trials_by_robot: dict, out_dir: Path) -> None:
     MAX_SCATTER = 4000
     rng = np.random.default_rng(42)
 
-    fig, ax = plt.subplots(figsize=PHASE2A_PANEL_FIGSIZE)
+    fig, ax = plt.subplots(figsize=PANEL_FIGSIZE)
 
     for robot_key, color, label in SUBJECTS:
         trials = trials_by_robot.get(robot_key) or []
@@ -217,7 +217,7 @@ def plot_fid(trials_by_robot: dict, out_dir: Path) -> None:
         loc="upper center", ncol=2, frameon=False,
         handlelength=1.2, columnspacing=0.8, borderaxespad=0.2,
     )
-    apply_phase2a_style(fig, ax, figsize=PHASE2A_PANEL_FIGSIZE)
+    apply_paper_style(fig, ax, figsize=PANEL_FIGSIZE)
     out_path = out_dir / "fid.svg"
     fig.savefig(out_path, format="svg", bbox_inches="tight")
     plt.close(fig)
