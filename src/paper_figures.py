@@ -1,0 +1,251 @@
+"""
+Publication figures for the paper.
+
+Outputs written to figures/paper/:
+  panel.svg  — 2×2 grid: fish_count, signed_reef_distance,
+               vertical_position, centroid_speed (raw, absolute time, mean±SEM)
+  fid.svg    — fish_count FID: |seconds from transect midpoint| (raw)
+"""
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import warnings
+warnings.filterwarnings("ignore")
+
+import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
+
+from config.paths import FIGURES_DIR, ensure_dirs_exist
+from src.utils.trial_loader import (
+    load_all_trials_from_timestamps,
+    load_diver_trials,
+    load_shark_trials,
+)
+from src.visualization.plot_style import (
+    apply_phase2a_style,
+    PHASE2A_PANEL_FIGSIZE,
+    AUV_C, TURTLE_C, DIVER_C, SHARK_C,
+)
+
+OUT_DIR = FIGURES_DIR / "paper"
+FPS     = 30
+
+# ── Figure-level configuration ────────────────────────────────────────────────
+
+# Metrics shown in the 4-panel figure, row-major 2×2 order.
+PANEL_METRICS = [
+    "fish_count",
+    "signed_reef_distance",
+    "vertical_position",
+    "centroid_speed",
+]
+
+PANEL_YLABELS = {
+    "fish_count":           "Fish count",
+    "signed_reef_distance": "Signed reef distance (px)",
+    "vertical_position":    "Vertical position (px)",
+    "centroid_speed":       "Centroid speed (px/frame)",
+}
+
+# Shared absolute-time axis: ±40 s from transect midpoint.
+ABS_TIME_GRID = np.linspace(-40, 40, 320)
+
+# FID axis: 0–40 s from transect midpoint (folded).
+FID_GRID = np.linspace(0, 40, 200)
+
+# Subjects in plot order: (trial_loader key, colour, legend label).
+SUBJECTS = [
+    ("auv",    AUV_C,    "AUV"),
+    ("turtle", TURTLE_C, "Turtle"),
+    ("diver",  DIVER_C,  "Diver"),
+    ("shark",  SHARK_C,  "Shark"),
+]
+
+
+# ── Core data helper ──────────────────────────────────────────────────────────
+
+def _abstime_matrix(trials: list, metric: str) -> np.ndarray | None:
+    """Interpolate all trials onto ABS_TIME_GRID (raw, not baseline-corrected).
+
+    Returns a (n_trials × len(ABS_TIME_GRID)) array, or None if no valid trials.
+    """
+    rows = []
+    for t in trials:
+        arr       = t["arrays"].get(metric)
+        frames    = t["frames"]
+        dist_f    = t["dist_frame"]
+        end_f     = t.get("end_frame")
+        trial_fps = t.get("fps", FPS)
+        if arr is None:
+            continue
+        mid_f = (dist_f + end_f) / 2.0 if end_f is not None else dist_f
+        t_sec = (frames - mid_f) / trial_fps
+        valid = ~np.isnan(arr)
+        if valid.sum() < 4:
+            continue
+        fi = interp1d(t_sec[valid], arr[valid], bounds_error=False, fill_value=np.nan)
+        rows.append(fi(ABS_TIME_GRID))
+    return np.array(rows) if rows else None
+
+
+def _mean_sem(mat: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    mean = np.nanmean(mat, axis=0)
+    n    = np.sum(~np.isnan(mat), axis=0).clip(1)
+    sem  = np.nanstd(mat, axis=0) / np.sqrt(n)
+    return mean, sem
+
+
+# ── Figures ───────────────────────────────────────────────────────────────────
+
+def plot_panel_figure(trials_by_robot: dict, out_dir: Path) -> None:
+    """4-panel 2×2 figure: raw absolute-time mean±SEM for each metric in PANEL_METRICS."""
+    panel_w = PHASE2A_PANEL_FIGSIZE[0]
+    panel_h = PHASE2A_PANEL_FIGSIZE[1]
+    fig, axes = plt.subplots(2, 2, figsize=(panel_w * 2, panel_h * 2))
+    axes_flat = axes.flatten()
+
+    for i, metric in enumerate(PANEL_METRICS):
+        ax = axes_flat[i]
+        legend_plotted = False
+
+        for robot_key, color, label in SUBJECTS:
+            trials = trials_by_robot.get(robot_key) or []
+            if not trials:
+                continue
+            mat = _abstime_matrix(trials, metric)
+            if mat is None:
+                continue
+            mean, sem = _mean_sem(mat)
+            vm = ~np.isnan(mean)
+            ax.plot(ABS_TIME_GRID[vm], mean[vm], color=color, lw=2, label=label)
+            ax.fill_between(
+                ABS_TIME_GRID[vm],
+                (mean - sem)[vm], (mean + sem)[vm],
+                color=color, alpha=0.18,
+            )
+            legend_plotted = True
+
+        ax.axvline(0, color="gray", lw=0.8, ls=":", alpha=0.6)
+        ax.set_xlabel("Time from transect midpoint (s)")
+        ax.set_ylabel(PANEL_YLABELS[metric])
+        if i == 0 and legend_plotted:
+            ax.legend(
+                loc="upper center", ncol=2, frameon=False,
+                handlelength=1.2, columnspacing=0.8, borderaxespad=0.2,
+            )
+
+    apply_phase2a_style(
+        fig, axes_flat,
+        figsize=(panel_w * 2, panel_h * 2),
+        clear_titles=True,
+    )
+    out_path = out_dir / "panel.svg"
+    fig.savefig(out_path, format="svg", bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {out_path}")
+
+
+def plot_fid(trials_by_robot: dict, out_dir: Path) -> None:
+    """FID figure for fish_count: |seconds from transect midpoint| (raw)."""
+    MAX_SCATTER = 4000
+    rng = np.random.default_rng(42)
+
+    fig, ax = plt.subplots(figsize=PHASE2A_PANEL_FIGSIZE)
+
+    for robot_key, color, label in SUBJECTS:
+        trials = trials_by_robot.get(robot_key) or []
+        if not trials:
+            continue
+
+        all_x, all_y = [], []
+        for t in trials:
+            arr       = t["arrays"].get("fish_count")
+            frames    = t["frames"]
+            dist_f    = t["dist_frame"]
+            end_f     = t.get("end_frame")
+            trial_fps = t.get("fps", FPS)
+            if arr is None:
+                continue
+            mid_f = (dist_f + end_f) / 2.0 if end_f is not None else dist_f
+            t_sec = np.abs((frames - mid_f) / trial_fps)
+            valid = ~np.isnan(arr) & (t_sec <= FID_GRID[-1])
+            all_x.extend(t_sec[valid].tolist())
+            all_y.extend(arr[valid].tolist())
+
+        if not all_x:
+            continue
+
+        sx, sy = np.array(all_x), np.array(all_y)
+        if len(sx) > MAX_SCATTER:
+            idx = rng.choice(len(sx), size=MAX_SCATTER, replace=False)
+            ax.scatter(sx[idx], sy[idx], color=color, alpha=0.12, s=5,
+                       linewidths=0, rasterized=True)
+        else:
+            ax.scatter(sx, sy, color=color, alpha=0.12, s=5,
+                       linewidths=0, rasterized=True)
+
+        bin_w = FID_GRID[1] - FID_GRID[0]
+        means, sems = [], []
+        for gx in FID_GRID:
+            vals = sy[np.abs(sx - gx) < bin_w]
+            if len(vals) >= 3:
+                means.append(np.nanmean(vals))
+                sems.append(np.nanstd(vals, ddof=1) / np.sqrt(len(vals)))
+            else:
+                means.append(np.nan)
+                sems.append(np.nan)
+
+        means = np.array(means)
+        sems  = np.array(sems)
+        vm    = ~np.isnan(means)
+        if vm.sum() >= 3:
+            ax.plot(FID_GRID[vm], means[vm], color=color, lw=2.5, label=label)
+            ax.fill_between(
+                FID_GRID[vm],
+                (means - sems)[vm], (means + sems)[vm],
+                color=color, alpha=0.18,
+            )
+
+    ax.set_xlabel("|Time| from transect midpoint (s)")
+    ax.set_ylabel("Fish count")
+    ax.legend(
+        loc="upper center", ncol=2, frameon=False,
+        handlelength=1.2, columnspacing=0.8, borderaxespad=0.2,
+    )
+    apply_phase2a_style(fig, ax, figsize=PHASE2A_PANEL_FIGSIZE)
+    out_path = out_dir / "fid.svg"
+    fig.savefig(out_path, format="svg", bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {out_path}")
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+def main() -> None:
+    ensure_dirs_exist(OUT_DIR)
+    print("Loading trials...")
+    auv    = load_all_trials_from_timestamps("auv")
+    turtle = load_all_trials_from_timestamps("turtle")
+    diver  = load_diver_trials()
+    shark  = load_shark_trials()
+    print(f"  AUV: {len(auv)}  Turtle: {len(turtle)}  Diver: {len(diver)}  Shark: {len(shark)}")
+
+    trials_by_robot = {
+        "auv":    auv,
+        "turtle": turtle,
+        "diver":  diver,
+        "shark":  shark,
+    }
+
+    plot_panel_figure(trials_by_robot, OUT_DIR)
+    plot_fid(trials_by_robot, OUT_DIR)
+    print(f"\nDone. Figures in {OUT_DIR}")
+
+
+if __name__ == "__main__":
+    main()
