@@ -16,9 +16,6 @@ FIGURES_SOUND          = FIGURES_DIR / "sound"
 TRANSECT_SOUND_DIR     = PROJECT_ROOT / "data" / "sound"
 FIGURES_SOUND_TRANSECT = FIGURES_DIR / "sound" / "transects"
 
-# Legacy 1-FPS data (kept for timestamp_loader fps=1 fallback)
-DATA_DIR = PROJECT_ROOT / "data"
-
 
 def ensure_dirs_exist(*dirs):
     """Create directories if they don't already exist."""

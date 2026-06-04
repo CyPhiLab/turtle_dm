@@ -124,11 +124,8 @@ DIVER_TRANSECTS = [
     },
 ]
 
-# ── Shark transect ────────────────────────────────────────────────────────────
+# ── Shark transects ──────────────────────────────────────────────────────────
 # Loaded at 30 FPS from annotated_video/GP1/.
-SHARK_VIDEO_IDS: dict[str, str] = {
-    "shark_1": "GX160534",
-}
-SHARK_TRANSECT_SECS: dict[str, tuple[int, int]] = {
-    "shark_1": (607, 614),   # GX160534  10:07–10:14
-}
+SHARK_TRANSECTS = [
+    {"id": "shark_1", "videos": ["GX160534"], "starts": [607], "ends": [614]},
+]

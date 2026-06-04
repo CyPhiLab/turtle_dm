@@ -21,11 +21,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
 from config.paths import FIGURES_DIR, ensure_dirs_exist
-from src.utils.trial_loader import (
-    load_all_trials_from_timestamps,
-    load_diver_trials,
-    load_shark_trials,
-)
+from src.utils.trial_loader import load_trials
 from src.visualization.plot_style import (
     apply_paper_style,
     PANEL_FIGSIZE,
@@ -70,7 +66,7 @@ SUBJECTS = [
 # ── Core data helper ──────────────────────────────────────────────────────────
 
 def _abstime_matrix(trials: list, metric: str) -> np.ndarray | None:
-    """Interpolate all trials onto ABS_TIME_GRID (raw, not baseline-corrected).
+    """Interpolate all trials onto ABS_TIME_GRID.
 
     Returns a (n_trials × len(ABS_TIME_GRID)) array, or None if no valid trials.
     """
@@ -80,7 +76,7 @@ def _abstime_matrix(trials: list, metric: str) -> np.ndarray | None:
         frames    = t["frames"]
         dist_f    = t["dist_frame"]
         end_f     = t.get("end_frame")
-        trial_fps = t.get("fps", FPS)
+        trial_fps = t["fps"]
         if arr is None:
             continue
         mid_f = (dist_f + end_f) / 2.0 if end_f is not None else dist_f
@@ -151,7 +147,7 @@ def plot_panel_figure(trials_by_robot: dict, out_dir: Path) -> None:
 
 
 def plot_fid(trials_by_robot: dict, out_dir: Path) -> None:
-    """FID figure for fish_count: |seconds from transect midpoint| (raw)."""
+    """FID figure for fish_count: |seconds from transect midpoint|."""
     MAX_SCATTER = 4000
     rng = np.random.default_rng(42)
 
@@ -168,7 +164,7 @@ def plot_fid(trials_by_robot: dict, out_dir: Path) -> None:
             frames    = t["frames"]
             dist_f    = t["dist_frame"]
             end_f     = t.get("end_frame")
-            trial_fps = t.get("fps", FPS)
+            trial_fps = t["fps"]
             if arr is None:
                 continue
             mid_f = (dist_f + end_f) / 2.0 if end_f is not None else dist_f
@@ -229,10 +225,10 @@ def plot_fid(trials_by_robot: dict, out_dir: Path) -> None:
 def main() -> None:
     ensure_dirs_exist(OUT_DIR)
     print("Loading trials...")
-    auv    = load_all_trials_from_timestamps("auv")
-    turtle = load_all_trials_from_timestamps("turtle")
-    diver  = load_diver_trials()
-    shark  = load_shark_trials()
+    auv    = load_trials("auv")
+    turtle = load_trials("turtle")
+    diver  = load_trials("diver")
+    shark  = load_trials("shark")
     print(f"  AUV: {len(auv)}  Turtle: {len(turtle)}  Diver: {len(diver)}  Shark: {len(shark)}")
 
     trials_by_robot = {

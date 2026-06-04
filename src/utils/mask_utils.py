@@ -88,27 +88,14 @@ def get_signed_reef_map(gopro: str | None = None) -> np.ndarray:
                 break
 
     if mask_file not in _signed_cache:
-        om, _ = get_masks(gopro)
-        edt_ocean = distance_transform_edt(om).astype(np.float32)
-        edt_reef  = distance_transform_edt(~om.astype(bool)).astype(np.float32)
+        om, edt_ocean = get_masks(gopro)
+        edt_reef = distance_transform_edt(~om.astype(bool)).astype(np.float32)
         _signed_cache[mask_file] = edt_ocean - edt_reef
 
     return _signed_cache[mask_file]
 
 
-def load_ocean_mask() -> np.ndarray:
-    """Decode the default (GP4) COCO RLE ocean mask → binary numpy array."""
-    om, _ = get_masks("GP4")
-    return om
-
-
-# Pre-loaded singletons (GP4 default) — kept for backward compatibility.
-OCEAN_MASK: np.ndarray
-REEF_DISTANCE_MAP: np.ndarray
-OCEAN_MASK, REEF_DISTANCE_MAP = get_masks("GP4")
-
 __all__ = [
-    "OCEAN_MASK", "REEF_DISTANCE_MAP",
     "MASK_WIDTH", "MASK_HEIGHT", "SCALE_X", "SCALE_Y",
-    "load_ocean_mask", "get_masks", "get_signed_reef_map",
+    "get_masks", "get_signed_reef_map",
 ]
