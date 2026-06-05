@@ -4,6 +4,8 @@ Per-frame fish metric computations shared across multiple plot scripts.
 
 import numpy as np
 import pandas as pd
+from scipy.spatial.distance import cdist
+from scipy.stats import entropy as sp_entropy
 
 from src.utils.mask_utils import MASK_WIDTH, MASK_HEIGHT, SCALE_X, SCALE_Y
 
@@ -11,6 +13,7 @@ from src.utils.mask_utils import MASK_WIDTH, MASK_HEIGHT, SCALE_X, SCALE_Y
 def compute_all_metrics_from_df(
     df: pd.DataFrame,
     signed_reef_map: np.ndarray | None = None,
+    shelter_pt: tuple[float, float] | None = None,
     rolling_window: int = 5,
 ) -> dict[str, np.ndarray]:
     """
@@ -18,11 +21,12 @@ def compute_all_metrics_from_df(
 
     Parameters
     ----------
-    df              : normalised per-frame DataFrame (output of auto_read_csv)
-    signed_reef_map : 2-D float array where ocean pixels are positive (distance
-                      to reef edge) and reef pixels are negative (negative
-                      distance to ocean edge).  When provided, computes
-                      ``signed_reef_distance``.  If None, the metric is omitted.
+    df              : normalised per-frame DataFrame (output of read_fish_csv)
+    signed_reef_map : 2-D float array (ocean positive, reef negative).  When
+                      provided, computes ``signed_reef_distance``.
+    shelter_pt      : (x, y) pixel coordinate of the shelter in 4K frame space.
+                      When provided, computes ``shelter_distance`` — mean
+                      Euclidean distance from each fish centroid to the shelter.
     rolling_window  : smoothing window (in frames)
     """
     from src.utils.csv_utils import loc_cols as _loc_cols
@@ -71,6 +75,15 @@ def compute_all_metrics_from_df(
         with np.errstate(all="ignore"):
             arrays["signed_reef_distance"] = _smooth(np.nanmean(sr_vals, axis=1))
 
+    # ── shelter_distance ──────────────────────────────────────────────
+    if shelter_pt is not None:
+        sx, sy = float(shelter_pt[0]), float(shelter_pt[1])
+        dx = np.where(valid, all_xy[:, :, 0] - sx, np.nan)
+        dy = np.where(valid, all_xy[:, :, 1] - sy, np.nan)
+        dists = np.sqrt(dx ** 2 + dy ** 2)
+        with np.errstate(all="ignore"):
+            arrays["shelter_distance"] = _smooth(np.nanmean(dists, axis=1))
+
     # ── centroid_speed ────────────────────────────────────────────────
     all_pos: list[np.ndarray] = [all_xy[i][valid[i]] for i in range(n)]
     cspeed = np.full(n, np.nan)
@@ -81,5 +94,28 @@ def compute_all_metrics_from_df(
                 np.mean(curr, axis=0) - np.mean(prev, axis=0)
             ))
     arrays["centroid_speed"] = _smooth(cspeed)
+
+    # ── nnd (nearest-neighbour distance) ─────────────────────────────
+    nnd_arr = np.full(n, np.nan)
+    for i, pts in enumerate(all_pos):
+        if len(pts) >= 2:
+            D = cdist(pts, pts)
+            np.fill_diagonal(D, np.inf)
+            nnd_arr[i] = float(D.min(axis=1).mean())
+    arrays["nnd"] = _smooth(nnd_arr)
+
+    # ── spatial_entropy ───────────────────────────────────────────────
+    N_BINS = 8
+    sent = np.full(n, np.nan)
+    for i, pts in enumerate(all_pos):
+        if len(pts) < 2:
+            continue
+        xs = np.clip(pts[:, 0] / 3840, 0, 1)
+        ys = np.clip(pts[:, 1] / 2160, 0, 1)
+        hist, _, _ = np.histogram2d(xs, ys, bins=N_BINS, range=[[0, 1], [0, 1]])
+        flat = hist.flatten()
+        flat = flat[flat > 0]
+        sent[i] = float(sp_entropy(flat / flat.sum(), base=2)) if len(flat) else 0.0
+    arrays["spatial_entropy"] = _smooth(sent)
 
     return arrays

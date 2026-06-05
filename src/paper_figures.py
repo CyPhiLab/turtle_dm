@@ -33,19 +33,23 @@ FPS     = 30
 
 # ── Figure-level configuration ────────────────────────────────────────────────
 
-# Metrics shown in the 4-panel figure, row-major 2×2 order.
+# Metrics shown in the panel figure, row-major 3×2 order.
 PANEL_METRICS = [
     "fish_count",
-    "signed_reef_distance",
+    "shelter_distance",
     "vertical_position",
     "centroid_speed",
+    "nnd",
+    "spatial_entropy",
 ]
 
 PANEL_YLABELS = {
-    "fish_count":           "Fish count",
-    "signed_reef_distance": "Signed reef distance (px)",
-    "vertical_position":    "Vertical position (px)",
-    "centroid_speed":       "Centroid speed (px/frame)",
+    "fish_count":        "Fish count",
+    "shelter_distance":  "Shelter distance (px)",
+    "vertical_position": "Vertical position (px)",
+    "centroid_speed":    "Centroid speed (px/frame)",
+    "nnd":               "Mean Nearest Neighbour Distance (px)",
+    "spatial_entropy":   "Spatial entropy (bits)",
 }
 
 # Shared absolute-time axis: ±40 s from transect midpoint.
@@ -102,7 +106,7 @@ def plot_panel_figure(trials_by_robot: dict, out_dir: Path) -> None:
     """4-panel 2×2 figure: raw absolute-time mean±SEM for each metric in PANEL_METRICS."""
     panel_w = PANEL_FIGSIZE[0]
     panel_h = PANEL_FIGSIZE[1]
-    fig, axes = plt.subplots(2, 2, figsize=(panel_w * 2, panel_h * 2))
+    fig, axes = plt.subplots(3, 2, figsize=(panel_w * 2, panel_h * 3))
     axes_flat = axes.flatten()
 
     for i, metric in enumerate(PANEL_METRICS):
@@ -137,7 +141,7 @@ def plot_panel_figure(trials_by_robot: dict, out_dir: Path) -> None:
 
     apply_paper_style(
         fig, axes_flat,
-        figsize=(panel_w * 2, panel_h * 2),
+        figsize=(panel_w * 2, panel_h * 3),
         clear_titles=True,
     )
     out_path = out_dir / "panel.svg"

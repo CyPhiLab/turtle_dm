@@ -24,7 +24,7 @@ from src.utils.csv_utils import read_fish_csv, loc_cols
 from src.utils.fish_metrics import compute_all_metrics_from_df
 
 
-def _load_trials(segs: list, src_dir: Path, robot: str, buffer_s: int) -> list:
+def _load_trials(segs: list, src_dir: Path, robot: str, buffer_s: int, shelter_pt: tuple | None = None) -> list:
     """
     Shared multi-video concatenation and metric computation for all robot types.
 
@@ -48,7 +48,7 @@ def _load_trials(segs: list, src_dir: Path, robot: str, buffer_s: int) -> list:
         all_dfs: list[pd.DataFrame] = []
         video_offset = 0
 
-        # Optional pre-buffer from the clip that precedes the first video
+        # If the video starts too close to the transect, we pull data from the end of the previous video.
         if prev_video is not None and starts[0] * fps < buffer_f:
             prev_csv = src_dir / prev_video / "fish_detections.csv"
             if prev_csv.exists():
@@ -88,6 +88,7 @@ def _load_trials(segs: list, src_dir: Path, robot: str, buffer_s: int) -> list:
             arrays = compute_all_metrics_from_df(
                 raw,
                 signed_reef_map=signed_reef_map,
+                shelter_pt=shelter_pt,
                 rolling_window=rolling_w,
             )
             trials.append({
@@ -102,6 +103,7 @@ def _load_trials(segs: list, src_dir: Path, robot: str, buffer_s: int) -> list:
             })
             continue
         # for-loop broke early (missing video) → skip segment
+        print(f"Warning: skipping trial {trial_id!r} — missing CSV for video {video_id!r}.")
 
     return trials
 
@@ -109,11 +111,15 @@ def _load_trials(segs: list, src_dir: Path, robot: str, buffer_s: int) -> list:
 # ── Public loader ────────────────────────────────────────────────────────────
 
 # (segs, src_dir, buffer_s)  — src_dir is relative to ANNOTATED_VIDEO_DIR
+# (segs, subdir, buffer_s, shelter_pt)
+_SHELTER_DEFAULT = (1800, 1200)
+_SHELTER_DIVER   = (1600, 1100)
+
 _ROBOT_CONFIG = {
-    "turtle": (TURTLE_TRANSECTS, "GP1",   30),
-    "auv":    (AUV_TRANSECTS,    "GP1",   30),
-    "diver":  (DIVER_TRANSECTS,  "diver", 40),
-    "shark":  (SHARK_TRANSECTS,  "GP1",   40),
+    "turtle": (TURTLE_TRANSECTS, "GP1",   30, _SHELTER_DEFAULT),
+    "auv":    (AUV_TRANSECTS,    "GP1",   30, _SHELTER_DEFAULT),
+    "diver":  (DIVER_TRANSECTS,  "diver", 40, _SHELTER_DIVER),
+    "shark":  (SHARK_TRANSECTS,  "GP1",   40, _SHELTER_DEFAULT),
 }
 
 
@@ -121,8 +127,8 @@ def load_trials(robot_type: str) -> list:
     """Load trials for *robot_type* ('turtle', 'auv', 'diver', or 'shark')."""
     if robot_type not in _ROBOT_CONFIG:
         raise ValueError(f"Unknown robot_type {robot_type!r}. Choose from {list(_ROBOT_CONFIG)}.")
-    segs, subdir, buffer_s = _ROBOT_CONFIG[robot_type]
+    segs, subdir, buffer_s, shelter_pt = _ROBOT_CONFIG[robot_type]
     src_dir = ANNOTATED_VIDEO_DIR / subdir
     if not src_dir.exists():
         return []
-    return _load_trials(segs, src_dir, robot_type, buffer_s=buffer_s)
+    return _load_trials(segs, src_dir, robot_type, buffer_s=buffer_s, shelter_pt=shelter_pt)

@@ -31,6 +31,9 @@ OUT_DIR = FIGURES_DIR / "sound" / "transects"
 
 CONTROL_C = SHARK_C  # purple — distinct from AUV (orange) and Turtle (teal)
 
+# Shared time axis: ±40 s from transect midpoint (mirrors paper_figures.py).
+ABS_TIME_GRID = np.linspace(-40, 40, 320)
+
 # (key in filename, colour, legend label)
 GROUPS = [
     ("turtle",  TURTLE_C,  "Turtle"),
@@ -39,10 +42,10 @@ GROUPS = [
 ]
 
 _PLOTS = [
-    ("rms",            "times_rms", "rms",      "Time (normalised)", "RMS Amplitude",       "RMS Amplitude per Frame"),
-    ("spl",            "times_rms", "spl",       "Time (normalised)", "SPL (dB)",            "Sound Pressure Level (SPL) per Frame"),
-    ("mean_spectrum",  "freqs",     "spectrum",  "Frequency (Hz)",    "Mean Amplitude (dB)", "Mean Spectrum (Averaged over Time)"),
-    ("mean_amplitude", "times",     "temporal",  "Time (normalised)", "Mean Amplitude (dB)", "Mean Temporal Energy (Averaged over Frequency)"),
+    ("rms",            "times", "rms",      "Time from transect midpoint (s)", "RMS Amplitude"),
+    ("spl",            "times", "spl",       "Time from transect midpoint (s)", "SPL (dB)"),
+    ("mean_spectrum",  "freqs", "spectrum",  "Frequency (Hz)",                  "Mean Amplitude (dB)"),
+    ("mean_amplitude", "times", "temporal",  "Time from transect midpoint (s)", "Mean Amplitude (dB)"),
 ]
 
 
@@ -51,6 +54,7 @@ _PLOTS = [
 def _load_audio(path):
     y, sr = sf.read(path)
     if y.ndim > 1:
+        print(f"Warning: {path} has {y.shape[1]} channels; converting to mono by averaging.")
         y = np.mean(y, axis=1)
     return y.astype(np.float64), sr
 
@@ -79,13 +83,15 @@ def _frame_rms(y, sr, frame_length=2048, hop_length=512):
 
 def _extract_features(file_path):
     y, sr = _load_audio(file_path)
+    duration = len(y) / sr
+    center   = duration / 2.0
     freqs, times, _, magnitude_db = _stft_db(y, sr)
     rms, times_rms = _frame_rms(y, sr)
-    spl = 20 * np.log10(rms + 1e-10)
+    spl = 20 * np.log10(rms / 1e-6 + 1e-10)
     return {
         "freqs":            freqs,
-        "times":            times,
-        "times_rms":        times_rms,
+        "times":            times     - center,
+        "times_rms":        times_rms - center,
         "mean_spectrum":    np.mean(magnitude_db, axis=1),
         "mean_temporal":    np.mean(magnitude_db, axis=0),
         "rms":              rms,
@@ -95,47 +101,35 @@ def _extract_features(file_path):
     }
 
 
-def _interp(x, y, x_common):
-    return np.interp(x_common, x, y)
 
 
 def aggregate_group(file_list):
     features = [_extract_features(f) for f in file_list]
-    common_freqs    = features[0]["freqs"]
-    n_rms  = min(len(f["rms"])          for f in features)
-    n_spec = min(len(f["mean_temporal"]) for f in features)
-    t_rms  = np.linspace(0, 1, n_rms)
-    t_spec = np.linspace(0, 1, n_spec)
+    common_freqs = features[0]["freqs"]
 
-    rms_all      = np.vstack([_interp(f["times_rms"] / f["times_rms"][-1], f["rms"],           t_rms)  for f in features])
-    spl_all      = np.vstack([_interp(f["times_rms"] / f["times_rms"][-1], f["spl"],           t_rms)  for f in features])
-    temporal_all = np.vstack([_interp(f["times"]     / f["times"][-1],     f["mean_temporal"], t_spec) for f in features])
-    spectrum_all = np.vstack([_interp(f["freqs"],                           f["mean_spectrum"], common_freqs) for f in features])
+    rms_all      = np.vstack([np.interp(ABS_TIME_GRID, f["times_rms"], f["rms"],           left=np.nan, right=np.nan) for f in features])
+    spl_all      = np.vstack([np.interp(ABS_TIME_GRID, f["times_rms"], f["spl"],           left=np.nan, right=np.nan) for f in features])
+    temporal_all = np.vstack([np.interp(ABS_TIME_GRID, f["times"],     f["mean_temporal"], left=np.nan, right=np.nan) for f in features])
+    spectrum_all = np.vstack([np.interp(common_freqs,  f["freqs"],     f["mean_spectrum"])                             for f in features])
 
     scalars_rms = np.array([f["mean_rms_scalar"] for f in features])
     scalars_spl = np.array([f["mean_spl_scalar"] for f in features])
     return {
         "freqs":                  common_freqs,
-        "times_rms":              t_rms,
-        "times":                  t_spec,
-        "rms_mean":               np.mean(rms_all,      axis=0),
-        "rms_std":                np.std(rms_all,       axis=0),
-        "spl_mean":               np.mean(spl_all,      axis=0),
-        "spl_std":                np.std(spl_all,       axis=0),
-        "temporal_mean":          np.mean(temporal_all, axis=0),
-        "temporal_std":           np.std(temporal_all,  axis=0),
-        "spectrum_mean":          np.mean(spectrum_all, axis=0),
-        "spectrum_std":           np.std(spectrum_all,  axis=0),
+        "times":                  ABS_TIME_GRID,
+        "rms_mean":               np.nanmean(rms_all,      axis=0),
+        "rms_std":                np.nanstd(rms_all,       axis=0),
+        "spl_mean":               np.nanmean(spl_all,      axis=0),
+        "spl_std":                np.nanstd(spl_all,       axis=0),
+        "temporal_mean":          np.nanmean(temporal_all, axis=0),
+        "temporal_std":           np.nanstd(temporal_all,  axis=0),
+        "spectrum_mean":          np.mean(spectrum_all,    axis=0),
+        "spectrum_std":           np.std(spectrum_all,     axis=0),
         "mean_rms_scalar_mean":   np.mean(scalars_rms),
         "mean_rms_scalar_std":    np.std(scalars_rms),
         "mean_spl_scalar_mean":   np.mean(scalars_spl),
         "mean_spl_scalar_std":    np.std(scalars_spl),
     }
-
-
-def plot_mean_std(ax, x, mean, std, label, color):
-    ax.plot(x, mean, label=label, color=color)
-    ax.fill_between(x, mean - std, mean + std, color=color, alpha=0.20)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -168,13 +162,20 @@ def main() -> None:
         print(f"{label} Mean RMS: {g['mean_rms_scalar_mean']:.6f} ± {g['mean_rms_scalar_std']:.6f}")
         print(f"{label} Mean SPL: {g['mean_spl_scalar_mean']:.2f} ± {g['mean_spl_scalar_std']:.2f} dB")
 
-    for fname, x_key, y_key, xlabel, ylabel, _ in _PLOTS:
+    for fname, x_key, y_key, xlabel, ylabel in _PLOTS:
         fig, ax = plt.subplots()
         for key, color, label in GROUPS:
             if key not in aggregated:
                 continue
             g = aggregated[key]
-            plot_mean_std(ax, g[x_key], g[f"{y_key}_mean"], g[f"{y_key}_std"], label, color)
+            x = g[x_key]
+            mean, std = g[f"{y_key}_mean"], g[f"{y_key}_std"]
+            valid = ~np.isnan(mean)
+            ax.plot(x[valid], mean[valid], label=label, color=color)
+            ax.fill_between(x[valid], (mean - std)[valid], (mean + std)[valid],
+                            color=color, alpha=0.20)
+        if x_key == "times":
+            ax.axvline(0, color="gray", lw=0.8, ls=":", alpha=0.6)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.legend(loc="upper center", ncol=3, frameon=False,
