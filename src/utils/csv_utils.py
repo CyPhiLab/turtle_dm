@@ -33,8 +33,8 @@ def read_fish_csv(csv_path: Path | str) -> pd.DataFrame:
     col_names     = lines[0].strip().split(",") + extra_cols
 
     df = pd.read_csv(csv_path, names=col_names, skiprows=1,
-                     on_bad_lines="warn", low_memory=False)
-    df["frame_num"] = df["frame_ID"].str.extract(r"(\d+)").astype(int)
+                     on_bad_lines="warn", low_memory=False).copy()
+    df["frame_num"] = df["frame_ID"].str.extract(r"(\d+)")[0].astype(int)
     return df.sort_values("frame_num").reset_index(drop=True)
 
 

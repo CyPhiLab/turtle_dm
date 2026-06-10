@@ -88,7 +88,9 @@ def compute_all_metrics_from_df(
     all_pos: list[np.ndarray] = [all_xy[i][valid[i]] for i in range(n)]
     cspeed = np.full(n, np.nan)
     for i in range(1, n):
+
         curr, prev = all_pos[i], all_pos[i - 1]
+        
         if len(curr) and len(prev):
             cspeed[i] = float(np.linalg.norm(
                 np.mean(curr, axis=0) - np.mean(prev, axis=0)
