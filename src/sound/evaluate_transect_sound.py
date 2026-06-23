@@ -114,6 +114,12 @@ def aggregate_group(file_list):
 
     scalars_rms = np.array([f["mean_rms_scalar"] for f in features])
     scalars_spl = np.array([f["mean_spl_scalar"] for f in features])
+
+    # Centre-window (±5 s) per-trial means
+    center_mask = np.abs(ABS_TIME_GRID) <= 5.0
+    center_rms = np.array([np.nanmean(row[center_mask]) for row in rms_all])
+    center_spl = np.array([np.nanmean(row[center_mask]) for row in spl_all])
+
     return {
         "freqs":                  common_freqs,
         "times":                  ABS_TIME_GRID,
@@ -129,6 +135,10 @@ def aggregate_group(file_list):
         "mean_rms_scalar_std":    np.std(scalars_rms),
         "mean_spl_scalar_mean":   np.mean(scalars_spl),
         "mean_spl_scalar_std":    np.std(scalars_spl),
+        "center_rms_scalar_mean": np.mean(center_rms),
+        "center_rms_scalar_std":  np.std(center_rms),
+        "center_spl_scalar_mean": np.mean(center_spl),
+        "center_spl_scalar_std":  np.std(center_spl),
     }
 
 
@@ -161,6 +171,8 @@ def main() -> None:
         g = aggregated[key]
         print(f"{label} Mean RMS: {g['mean_rms_scalar_mean']:.6f} ± {g['mean_rms_scalar_std']:.6f}")
         print(f"{label} Mean SPL: {g['mean_spl_scalar_mean']:.2f} ± {g['mean_spl_scalar_std']:.2f} dB")
+        print(f"{label} Center (±5 s) RMS: {g['center_rms_scalar_mean']:.6f} ± {g['center_rms_scalar_std']:.6f}")
+        print(f"{label} Center (±5 s) SPL: {g['center_spl_scalar_mean']:.2f} ± {g['center_spl_scalar_std']:.2f} dB")
 
     for fname, x_key, y_key, xlabel, ylabel in _PLOTS:
         fig, ax = plt.subplots()
