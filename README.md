@@ -1,6 +1,6 @@
 # turtle_dm
 
-Analysis of fish behaviour from GoPro video detections, producing per-frame metrics and figures. We compare two robot platforms, [Crush the sea turtle robot](https://arxiv.org/abs/2602.21389) and [CUREE](https://ieeexplore.ieee.org/abstract/document/10161282) (A Curious Underwater Robot for Ecosystem Exploration), to assess the disturbance to local fauna near a coral reef hotspot in the US Virgin Islands. We also compare to the response to a diver and to a shark.
+Analysis of fish behavior from GoPro video detections, producing per-frame metrics and figures. We compare two robot platforms, [Crush the sea turtle robot](https://arxiv.org/abs/2602.21389) and [CUREE](https://ieeexplore.ieee.org/abstract/document/10161282) (A Curious Underwater Robot for Ecosystem Exploration), to assess the disturbance to local fauna near a coral reef hotspot in the US Virgin Islands. We also compare to the response to a diver and to a shark. Videos of the tagged videos can be found on [Zenodo](https://zenodo.org/records/21841193?preview=1&token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImUwMGYyZGY4LTViNDMtNGE4Ni04NjIyLTBjOWYwMWNhNWMzMSIsImRhdGEiOnt9LCJyYW5kb20iOiI1NWU3NjkwYzU3ZjgzNDBkMjE0NDkxYWFmYThhYTY1NSJ9.LPaC2b25A3fF3h0QJNYnrknARBnR1ZwfEJDfpr4KuvrvBwEh0VPvFtq4jmlHdD1BiTW9mRLOAszlDk1jKgsPZA).
 
 ## Usage
 
