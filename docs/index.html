@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fish Response to Underwater Robots</title>
+  <meta name="description" content="The first field comparison of wild reef fish responses to a biomimetic sea turtle robot, a conventional thruster-driven AUV, and a human diver.">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Characterizing Wildlife Response to Biomimetic and Conventional Underwater Vehicles">
+  <meta property="og:description" content="The first field comparison of wild reef fish responses to a biomimetic sea turtle robot, a conventional thruster-driven AUV, and a human diver.">
+  <meta property="og:url" content="https://cyphilab.github.io/turtle_dm/">
+  <meta property="og:image" content="https://cyphilab.github.io/turtle_dm/static/images/teaser.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐢</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Characterizing Wildlife Response to Biomimetic and Conventional Underwater Vehicles</h1>
+
+    <p class="authors">
+      <span>Huy Pham<sup>1*</sup></span>
+      <span>Levi Cai<sup>2,3*</sup></span>
+      <span>Yogesh Girdhar<sup>3†</sup></span>
+      <span>Daniela Rus<sup>4†</sup></span>
+      <span>Zach J. Patterson<sup>1,4†</sup></span>
+    </p>
+    <p class="affils">
+      <span><sup>1</sup>Case Western Reserve University</span>
+      <span><sup>2</sup>Computer Science and ESIIL, University of Colorado Boulder</span>
+      <span><sup>3</sup>Woods Hole Oceanographic Institution</span>
+      <span><sup>4</sup>MIT CSAIL</span>
+    </p>
+    <p class="notes">* Equal contribution &nbsp;·&nbsp; † Equal advising</p>
+
+    <nav class="buttons">
+      <a class="btn" href="https://arxiv.org/abs/2609.22594">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 18H6V4h7v5h5zM8 13h8v2H8zm0 4h8v2H8zm0-8h3v2H8z"/></svg>
+        Paper
+      </a>
+      <a class="btn" href="https://youtu.be/1znY-b7FJzk">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12a31 31 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8zM9.75 15.02V8.98L15.5 12z"/></svg>
+        Video
+      </a>
+      <a class="btn" href="https://github.com/CyPhiLab/turtle_dm">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
+        Code
+      </a>
+      <a class="btn" href="https://zenodo.org/records/21841193?preview=1&amp;token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImUwMGYyZGY4LTViNDMtNGE4Ni04NjIyLTBjOWYwMWNhNWMzMSIsImRhdGEiOnt9LCJyYW5kb20iOiI1NWU3NjkwYzU3ZjgzNDBkMjE0NDkxYWFmYThhYTY1NSJ9.LPaC2b25A3fF3h0QJNYnrknARBnR1ZwfEJDfpr4KuvrvBwEh0VPvFtq4jmlHdD1BiTW9mRLOAszlDk1jKgsPZA">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C7 3 3 4.8 3 7v10c0 2.2 4 4 9 4s9-1.8 9-4V7c0-2.2-4-4-9-4zm0 2c4.4 0 7 1.5 7 2s-2.6 2-7 2-7-1.5-7-2 2.6-2 7-2zm7 12c0 .5-2.6 2-7 2s-7-1.5-7-2v-2.3c1.6.8 4.2 1.3 7 1.3s5.4-.5 7-1.3zm0-5c0 .5-2.6 2-7 2s-7-1.5-7-2V9.7c1.6.8 4.2 1.3 7 1.3s5.4-.5 7-1.3z"/></svg>
+        Data
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section>
+    <div class="wrap">
+      <div class="video">
+        <iframe src="https://www.youtube-nocookie.com/embed/1znY-b7FJzk?rel=0"
+                title="Project video"
+                loading="lazy"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen></iframe>
+      </div>
+    </div>
+  </section>
+
+  <section class="abstract">
+    <div class="wrap prose">
+      <h2>Abstract</h2>
+      <p>
+        Autonomous underwater vehicles (AUVs) are a promising alternative to divers for scalable collection of
+        natural ocean ecology data. However, these robots may disturb local fauna and cause drastic behavioral
+        differences compared to other monitoring techniques, decreasing their value as scientific tools. A promising
+        prospect is to make AUVs that are more biomimetic, with the hope that taking on the form and behavior of a
+        non-predatory animal may reduce adverse responses. We present the first dataset comparing fish disturbance in
+        response to a conventional thruster-driven AUV, a sea turtle inspired flipper-driven AUV, and a diver.
+        Experiments were conducted at a biodiversity hotspot in a Caribbean reef, and images of the scene were analyzed
+        using computer vision to localize and study fish behavior change. Both AUVs cause measurable changes in fish
+        behavior. Although no between-robot differences remain significant after correction for multiple comparisons,
+        point estimates generally favor the biomimetic AUV, motivating larger studies capable of resolving modest
+        effects and further design changes to optimize for disturbance. We also observe larger responses during diver
+        transects than during AUV transects, although this exploratory comparison is based on a small diver sample with
+        several confounds. While conclusions must be taken as preliminary due to operational and experimental
+        limitations, this study provides the community with a first known dataset and benchmarks to quantify the
+        behavioral impacts of biomimetic robots for ecological monitoring in the wild.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Two robots, one reef</h2>
+      <figure class="teaser">
+        <div class="pair">
+          <div>
+            <img src="static/images/crush.jpg" alt="The black sea turtle robot Crush swimming over a coral reef with white flippers" width="984" height="554">
+            <p class="label"><span class="chip turtle"></span>Crush: biomimetic, flipper-driven</p>
+          </div>
+          <div>
+            <img src="static/images/curee.jpg" alt="The box-shaped thruster AUV CUREE hovering above coral" width="984" height="553">
+            <p class="label"><span class="chip auv"></span>CUREE: conventional, thruster-driven</p>
+          </div>
+        </div>
+        <figcaption>
+          We characterize the response of wild fish in a Caribbean coral reef to a biomimetic sea turtle robot and a
+          conventional thruster-driven AUV, and quantify the observer bias of each platform against a human diver by
+          measuring the “disturbance” each one creates.
+        </figcaption>
+      </figure>
+
+      <h3>Contributions</h3>
+      <ul class="contrib">
+        <li>The first comparative field deployment of a conventional and a biomimetic AUV.</li>
+        <li>Data on wild fish response to two different AUVs and to a human diver.</li>
+        <li>An open-source pipeline to analyze such video data for fish disturbance.</li>
+        <li>First evidence that AUVs may be less intrusive than divers, and that biomimetic AUVs may be less intrusive than conventional ones.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap prose">
+      <h2>Method</h2>
+
+      <h3>Protocol</h3>
+      <p>
+        Fixed GoPro cameras on the seabed face a coral head that serves as a reef “hotspot.” AprilTags mark a
+        three-point transect: one end of the reef, the hotspot, and the far end. After fish re-habituate to the
+        cameras, the vehicle dwells at one end for a control period, swims across the hotspot, dwells at the other
+        end, and repeats in reverse. The analysis uses the <em>change</em> from the dwell-period baseline as the
+        vehicle passes the coral head, which helps control for differences in day, time, and species present.
+      </p>
+
+      <h3>Platforms</h3>
+      <p>
+        <strong>CUREE</strong> is a six-degree-of-freedom AUV driven by six Blue Robotics T200 thrusters, with survey
+        cameras and a DVL for localization and altitude hold. <strong>Crush</strong> has the form of a sea turtle: it
+        generates thrust with a pair of front flippers and steers with its rear flippers. The flippers are injection
+        molded from silicone rubber and driven by DYNAMIXEL servomotors, with cameras in the eye sockets. Both robots
+        were teleoperated to avoid collisions with the reef.
+      </p>
+
+      <h3>Field experiments</h3>
+      <p>
+        Deployments took place in November 2024 at the Yawzi reef site off St. John, US Virgin Islands. CUREE held an
+        altitude of 1.5&nbsp;m (about 7&nbsp;m depth). A diver baseline was collected the previous day, and a shark
+        happened to swim through the reef between experiments.
+      </p>
+    </div>
+
+    <div class="wrap">
+      <div class="stats">
+        <div class="stat turtle"><div class="n">17</div><div class="l">turtle robot transects</div></div>
+        <div class="stat auv"><div class="n">18</div><div class="l">thruster AUV transects</div></div>
+        <div class="stat diver"><div class="n">4</div><div class="l">diver transects</div></div>
+        <div class="stat shark"><div class="n">1</div><div class="l">shark pass</div></div>
+      </div>
+    </div>
+
+    <div class="wrap prose">
+      <h3>Finding fish with fine-tuned SAM&nbsp;3</h3>
+      <p>
+        Out of the box, Segment Anything Model&nbsp;3 missed distant fish in dim water and often labeled Crush and its
+        flippers as fish. We fine-tuned it on 80 hand-labeled frames (1,801 annotations of fish and turtle flippers,
+        80/20 split, 40 epochs).
+      </p>
+    </div>
+
+    <div class="wrap">
+      <figure>
+        <div class="pair">
+          <div>
+            <img src="static/images/sam3_pretrained.jpg" alt="Pretrained SAM 3 output: the turtle robot is segmented as a fish and small fish are missed" width="1600" height="900" loading="lazy">
+            <p class="label">Pretrained SAM 3</p>
+          </div>
+          <div>
+            <img src="static/images/sam3_finetuned.jpg" alt="Fine-tuned SAM 3 output: fish and turtle flippers are segmented separately" width="1600" height="900" loading="lazy">
+            <p class="label">Fine-tuned SAM 3</p>
+          </div>
+        </div>
+        <figcaption>
+          Fish are segmented in green and turtle flippers in red. Before fine-tuning, the model mistakes the turtle and
+          its flippers for a fish and misses small fish.
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="wrap prose">
+      <div class="table-wrap">
+        <table>
+          <caption><b>Validation (COCO, IoU 0.50–0.95).</b> Small fish near the coral remain hard to detect, which is a limitation since hiding may itself be a disturbance response.</caption>
+          <thead><tr><th>Object size</th><th>AP</th><th>AR</th></tr></thead>
+          <tbody>
+            <tr><td>Large (≥ 9216 px²)</td><td>0.966</td><td>0.971</td></tr>
+            <tr><td>Medium</td><td>0.717</td><td>0.757</td></tr>
+            <tr><td>Small (&lt; 1024 px²)</td><td>0.372</td><td>0.408</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Disturbance metrics</h3>
+      <dl class="metrics">
+        <dt>Fish count</dt><dd>Number of detected fish in the frame. The most informative signal.</dd>
+        <dt>Shelter distance</dt><dd>Mean distance from the primary coral head, used in prior work.</dd>
+        <dt>Vertical position</dt><dd>Mean vertical pixel position of the fish, since fish often fled upward and away from the reef.</dd>
+        <dt>Centroid speed</dt><dd>Frame-to-frame displacement of the school centroid (px/frame).</dd>
+        <dt>Mean nearest-neighbour distance</dt><dd>Local clustering of shoaling fish.</dd>
+        <dt>Spatial entropy</dt><dd>Global dispersal of the fish over an 8×8 grid, <i>H</i> = −Σ <i>p<sub>i</sub></i> ln <i>p<sub>i</sub></i>.</dd>
+      </dl>
+      <p>
+        Each transect is normalized to unit progress and split into start [0, 0.25), middle [0.375, 0.625], and end
+        (0.75, 1] windows. The per-transect response is the middle-window median relative to the two baselines:
+      </p>
+      <p class="eq">Δ = x<sub>middle</sub> − ½ (x<sub>start</sub> + x<sub>end</sub>)</p>
+      <p>
+        One-sample <i>t</i>-tests check whether Δ differs from zero for each vehicle. The primary comparison, thruster
+        AUV versus turtle robot, uses Welch <i>t</i>-tests with Benjamini–Hochberg FDR correction across the six
+        metrics. Diver comparisons (<i>n</i>&nbsp;=&nbsp;4) are exploratory.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Results</h2>
+      <figure>
+        <div class="plot">
+          <img class="w-md" src="static/images/panel.svg" alt="Six time-series panels of fish metrics around the transect midpoint for thruster AUV, turtle, diver and shark" loading="lazy">
+        </div>
+        <figcaption>
+          <b>Fish-assemblage metrics over time.</b> Mean ± SEM relative to the transect midpoint for each condition:
+          (a) fish count, (b) shelter distance, (c) vertical position, (d) centroid speed, (e) mean nearest-neighbour
+          distance, (f) spatial entropy. The dotted line at <i>t</i>&nbsp;=&nbsp;0 marks closest approach.
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="wrap prose">
+      <p>
+        Every condition produces a characteristic dip in fish count at the center of the transect, followed by
+        recovery, so all of them disturb the fish. The thruster AUV causes a slightly larger drop (−3.12) than the
+        turtle robot (−2.56), though the difference is not significant (<i>p</i>&nbsp;=&nbsp;0.49). From a higher
+        baseline, the diver causes a larger drop (−9.76). Beyond fish count, the most consistent signal is
+        <strong>spatial entropy</strong>, which falls for every condition: fish crowd together as the disturbance
+        passes. Shelter distance, used in earlier work, shows no clear trend.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <caption><b>Table I. Per-condition response Δ during disturbance.</b> Bold rows: <i>p</i> &lt; 0.05.</caption>
+          <thead><tr><th>Condition</th><th class="l">Metric</th><th>Δ</th><th>95% CI</th><th><i>p</i></th></tr></thead>
+          <tbody class="group">
+            <tr class="sig"><td class="cond" rowspan="6"><span class="chip auv"></span>Thruster AUV</td><td class="l">Fish count</td><td>−3.12</td><td>[−4.38, −1.87]</td><td>&lt;0.001</td></tr>
+            <tr class="sig"><td class="l">Spatial entropy</td><td>−0.46</td><td>[−0.65, −0.27]</td><td>&lt;0.001</td></tr>
+            <tr class="sig"><td class="l">Centroid speed</td><td>21.50</td><td>[6.51, 36.48]</td><td>0.008</td></tr>
+            <tr class="sig"><td class="l">Vertical position</td><td>37.58</td><td>[2.64, 72.51]</td><td>0.037</td></tr>
+            <tr><td class="l">Mean NND</td><td>47.80</td><td>[−2.21, 97.82]</td><td>0.060</td></tr>
+            <tr><td class="l">Shelter distance</td><td>−3.46</td><td>[−46.83, 39.91]</td><td>0.868</td></tr>
+          </tbody>
+          <tbody class="group">
+            <tr class="sig"><td class="cond" rowspan="6"><span class="chip turtle"></span>Turtle robot</td><td class="l">Fish count</td><td>−2.56</td><td>[−3.69, −1.43]</td><td>&lt;0.001</td></tr>
+            <tr class="sig"><td class="l">Spatial entropy</td><td>−0.19</td><td>[−0.37, −0.02]</td><td>0.032</td></tr>
+            <tr><td class="l">Mean NND</td><td>15.07</td><td>[−6.93, 37.06]</td><td>0.166</td></tr>
+            <tr><td class="l">Centroid speed</td><td>7.51</td><td>[−4.47, 19.50]</td><td>0.202</td></tr>
+            <tr><td class="l">Shelter distance</td><td>−18.72</td><td>[−50.73, 13.28]</td><td>0.233</td></tr>
+            <tr><td class="l">Vertical position</td><td>0.67</td><td>[−33.08, 34.41]</td><td>0.967</td></tr>
+          </tbody>
+          <tbody class="group">
+            <tr class="sig"><td class="cond" rowspan="6"><span class="chip diver"></span>Diver</td><td class="l">Fish count</td><td>−9.76</td><td>[−12.61, −6.91]</td><td>0.002</td></tr>
+            <tr class="sig"><td class="l">Spatial entropy</td><td>−0.85</td><td>[−1.11, −0.58]</td><td>0.002</td></tr>
+            <tr class="sig"><td class="l">Vertical position</td><td>157.30</td><td>[71.73, 242.86]</td><td>0.010</td></tr>
+            <tr><td class="l">Centroid speed</td><td>33.06</td><td>[−29.29, 95.42]</td><td>0.190</td></tr>
+            <tr><td class="l">Mean NND</td><td>35.80</td><td>[−79.38, 150.97]</td><td>0.396</td></tr>
+            <tr><td class="l">Shelter distance</td><td>42.06</td><td>[−191.86, 275.97]</td><td>0.607</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Thruster AUV versus turtle robot</h3>
+      <p>
+        No metric differs significantly between the two robots after FDR correction. The largest uncorrected effect is
+        spatial entropy (difference −0.27, <i>p</i>&nbsp;=&nbsp;0.037, <i>p</i><sub>FDR</sub>&nbsp;=&nbsp;0.22),
+        suggesting the thruster AUV may cause fish to bunch up more than the turtle robot does. With 17–18 transects
+        per robot, the study is likely underpowered for moderate between-robot effects.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <caption><b>Table II. Difference in response, thruster AUV Δ − turtle Δ.</b> <i>p</i><sub>FDR</sub>: Benjamini–Hochberg corrected.</caption>
+          <thead><tr><th>Metric</th><th>AUV Δ</th><th>Turtle Δ</th><th>Difference</th><th>95% CI</th><th><i>p</i></th><th><i>p</i><sub>FDR</sub></th></tr></thead>
+          <tbody>
+            <tr><td>Spatial entropy</td><td>−0.46</td><td>−0.19</td><td>−0.27</td><td>[−0.52, −0.02]</td><td>0.037</td><td>0.223</td></tr>
+            <tr><td>Vertical position</td><td>37.58</td><td>0.67</td><td>36.91</td><td>[−9.82, 83.64]</td><td>0.118</td><td>0.267</td></tr>
+            <tr><td>Centroid speed</td><td>21.50</td><td>7.51</td><td>13.98</td><td>[−4.51, 32.48]</td><td>0.133</td><td>0.267</td></tr>
+            <tr><td>Mean NND</td><td>47.80</td><td>15.07</td><td>32.74</td><td>[−20.76, 86.24]</td><td>0.218</td><td>0.328</td></tr>
+            <tr><td>Fish count</td><td>−3.12</td><td>−2.56</td><td>−0.56</td><td>[−2.19, 1.07]</td><td>0.487</td><td>0.554</td></tr>
+            <tr><td>Shelter distance</td><td>−3.46</td><td>−18.72</td><td>15.27</td><td>[−36.77, 67.30]</td><td>0.554</td><td>0.554</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Flight initiation distance</h3>
+      <p>
+        Without absolute distances, time to closest approach serves as a proxy. A logistic profile fitted to the
+        pooled per-frame data gives the time at which the response first reaches 95% of baseline.
+      </p>
+    </div>
+
+    <div class="wrap">
+      <figure>
+        <div class="plot">
+          <img src="static/images/fid.svg" alt="Fish count and spatial entropy versus seconds from closest approach, with logistic fits per condition" loading="lazy">
+        </div>
+        <figcaption>
+          <b>Flight initiation, proxied by time</b> (0&nbsp;s = closest approach, 40&nbsp;s = far from the vehicle)
+          for (a) fish count and (b) spatial entropy. Points are subsampled per-frame values, solid lines are binned
+          mean ± SE, and dashed lines are the fitted logistic model.
+        </figcaption>
+      </figure>
+    </div>
+
+    <div class="wrap prose">
+      <div class="table-wrap">
+        <table>
+          <caption><b>Flight initiation time x<sub>FID</sub> (s).</b></caption>
+          <thead><tr><th>Metric</th><th><span class="chip auv"></span>Thruster AUV</th><th><span class="chip turtle"></span>Turtle</th><th><span class="chip diver"></span>Diver</th></tr></thead>
+          <tbody>
+            <tr><td>Fish count</td><td>22.02</td><td>14.80</td><td>11.43</td></tr>
+            <tr><td>Spatial entropy</td><td>13.37</td><td>6.73</td><td>11.94</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Sound</h3>
+      <p>
+        The GoPro microphones give a rough comparison of how loud each robot is on the reef. The thruster AUV was about
+        2–3× louder than the turtle robot, which was close to the no-robot control. The microphones were not
+        calibrated, so these are relative values only, and we did not establish a causal link between sound and
+        disturbance.
+      </p>
+    </div>
+
+    <div class="wrap">
+      <figure>
+        <div class="plot">
+          <img class="w-sm" src="static/images/rms.svg" alt="RMS sound amplitude over time around the transect midpoint for thruster AUV, turtle and no robot" loading="lazy">
+        </div>
+        <figcaption><b>Relative RMS sound amplitude</b> in arbitrary digital units from uncalibrated GoPro microphones.</figcaption>
+      </figure>
+    </div>
+
+    <div class="wrap prose">
+      <div class="table-wrap">
+        <table>
+          <caption><b>RMS amplitude (arbitrary units, mean ± SD).</b></caption>
+          <thead><tr><th>Window</th><th><span class="chip auv"></span>Thruster AUV</th><th><span class="chip turtle"></span>Turtle</th><th><span class="chip none"></span>No robot</th></tr></thead>
+          <tbody>
+            <tr><td>Whole trial</td><td>0.0072 ± 0.0021</td><td>0.0035 ± 0.0011</td><td>0.0032 ± 0.0019</td></tr>
+            <tr><td>Midpoint ± 5 s</td><td>0.0110 ± 0.0040</td><td>0.0042 ± 0.0031</td><td>0.0037 ± 0.0028</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <strong>Limitations.</strong> These results are preliminary.
+        <ul>
+          <li>All turtle-robot transects were run before all CUREE transects, so time of day is confounded with vehicle.</li>
+          <li>Crush was hard to control in strong currents, so its transects were messier than CUREE's.</li>
+          <li>The diver transects (<i>n</i>&nbsp;=&nbsp;4) were collected on a different day with roughly twice the baseline fish count.</li>
+          <li>Robot data come from a single day at a single site.</li>
+          <li>Small fish are under-detected, and the microphones were uncalibrated.</li>
+        </ul>
+        Future studies should interleave the robots (for example, 10 transects each, repeated) and cover more days and sites.
+      </div>
+    </div>
+  </section>
+
+  <section id="bibtex">
+    <div class="wrap">
+      <h2>BibTeX</h2>
+      <div class="bib">
+        <button type="button">Copy</button>
+<pre>@misc{pham2026characterizing,
+  title         = {Characterizing Wildlife Response to Biomimetic and Conventional Underwater Vehicles},
+  author        = {Pham, Huy and Cai, Levi and Girdhar, Yogesh and Rus, Daniela and Patterson, Zach J.},
+  year          = {2026},
+  eprint        = {2609.22594},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2609.22594}
+}</pre>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <strong>Acknowledgments.</strong> Thanks to the WHOI WARPLab, the Mooney Lab, and the University of the Virgin
+      Islands for fieldwork assistance. Experiments were conducted under National Park Service Scientific Research and
+      Collecting Permit VIIS-2022-SCI-0005 and funded by NSF grant #2133029, the SMART M3 program, GIST Physical AI,
+      and BARI.
+    </p>
+    <p>Analysis code and data: <a href="https://github.com/CyPhiLab/turtle_dm">github.com/CyPhiLab/turtle_dm</a></p>
+  </div>
+</footer>
+
+<script src="static/js/main.js"></script>
+</body>
+</html>
